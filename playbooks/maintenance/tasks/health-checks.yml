@@ -1,0 +1,47 @@
+---
+# tasks/health-checks.yml
+- name: Vérifier l'espace disque sur toutes les partitions
+  shell: |
+    df -h | awk '$5+0 > 80 {print $6" "$5" ("$4" libre)"}'
+  register: disk_critical
+  changed_when: false
+  failed_when: false
+  
+- name: Alerter si espace disque critique
+  fail:
+    msg: "ATTENTION: Espace disque critique - {{ disk_critical.stdout }}"
+  when: 
+    - disk_critical.stdout != ""
+    - emergency_mode is not defined
+  ignore_errors: true
+  
+- name: Vérifier la charge système
+  shell: |
+    uptime | awk -F'load average:' '{print $2}'
+  register: load_average
+  changed_when: false
+  
+- name: Vérifier la mémoire disponible
+  shell: |
+    free -m | awk '/^Mem:/ {printf "%.1f%%", ($3/$2)*100}'
+  register: memory_usage
+  changed_when: false
+  
+- name: Vérifier les processus zombies
+  shell: |
+    ps aux | grep -c " <defunct>"
+  register: zombie_count
+  changed_when: false
+  failed_when: zombie_count.stdout | int > 10
+  ignore_errors: true
+
+- name: Créer un résumé de santé
+  set_fact:
+    health_summary:
+      hostname: "{{ inventory_hostname }}"
+      disk_usage: "{{ disk_critical.stdout | default('OK') }}"
+      load: "{{ load_average.stdout }}"
+      memory: "{{ memory_usage.stdout }}"
+      swap: "{{ swap_usage.stdout }}%"
+      zombies: "{{ zombie_count.stdout }}"
+    

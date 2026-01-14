@@ -1,0 +1,15 @@
+---
+# playbooks/maintenance-cleanup.yml
+# Nettoyage système uniquement
+- name: Nettoyage système
+  hosts: all
+  become: yes
+  gather_facts: yes
+  
+  tasks:
+    - import_tasks: ./tasks/system-cleanup.yml
+    - import_tasks: ./tasks/log-rotation.yml
+    - import_tasks: ./tasks/docker-cleanup.yml
+      when: "'containers' in group_names"
+    - import_tasks: ./tasks/docker-cleanup.yml
+      when: "'ci_cd' in group_names"

@@ -1,0 +1,34 @@
+---
+# tasks/log-rotation.yml  
+- name: Identifier les gros fichiers de logs
+  find:
+    paths: /var/log
+    patterns: "*.log"
+    size: 100M
+    recurse: yes
+  register: large_logs
+  
+- name: Compresser les gros logs
+  shell: |
+    for file in {{ item.path }}; do
+      if [[ ! "$file" =~ \.gz$ ]]; then
+        gzip -c "$file" > "${file}.gz" && truncate -s 0 "$file"
+      fi
+    done
+  loop: "{{ large_logs.files }}"
+  when: large_logs.matched > 0
+  
+- name: Nettoyer les vieux logs compressés (> 30 jours)
+  find:
+    paths: /var/log
+    patterns: "*.gz"
+    age: 30d
+    recurse: yes
+  register: old_logs
+  
+- name: Supprimer les vieux logs
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ old_logs.files }}"
+  when: old_logs.matched > 0

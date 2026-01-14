@@ -1,0 +1,29 @@
+---
+# playbooks/maintenance-security.yml
+# Mises à jour de sécurité uniquement
+- name: Mises à jour de sécurité
+  hosts: all
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    only_security: true
+    
+  tasks:
+    - import_tasks: ./tasks/system-update.yml
+      vars:
+        security_only: true
+        
+    - name: Vérifier les CVE critiques
+      shell: |
+        if command -v debsecan &> /dev/null; then
+          debsecan --suite $(lsb_release -cs) | grep -E "high|critical" | head -20
+        fi
+      register: cve_check
+      failed_when: false
+      changed_when: false
+      
+    - name: Afficher les CVE détectés
+      debug:
+        msg: "{{ cve_check.stdout_lines }}"
+      when: cve_check.stdout_lines | length > 0

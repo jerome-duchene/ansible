@@ -1,0 +1,11 @@
+---
+# playbooks/maintenance-monitoring.yml
+# Vérifications de santé uniquement
+- name: Monitoring et vérifications
+  hosts: all
+  become: yes
+  gather_facts: yes
+  
+  tasks:
+    - import_tasks: ./tasks/health-checks.yml
+   

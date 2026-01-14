@@ -1,0 +1,25 @@
+---
+# playbooks/maintenance-full.yml
+# Maintenance complète du système
+- name: Maintenance complète de l'infrastructure
+  hosts: all
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    maintenance_date: "{{ ansible_date_time.date }}"
+    enable_auto_reboot: false
+        
+  tasks:
+    - import_tasks: ./tasks/system-update.yml
+      tags: [update, security]
+      
+    - import_tasks: ./tasks/system-cleanup.yml
+      tags: [cleanup]
+      
+    - import_tasks: ./tasks/swap-management.yml
+      tags: [swap, performance]
+      
+    - import_tasks: ./tasks/health-checks.yml
+      tags: [monitoring, health]
+     

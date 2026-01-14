@@ -1,0 +1,27 @@
+---
+# tasks/swap-management.yml
+- name: Vérifier l'utilisation de la swap
+  shell: |
+    free -m | awk '/^Swap:/ {
+      if ($2 > 0) 
+        printf "%.1f", ($3/$2)*100
+      else 
+        print "0"
+    }'
+  register: swap_usage
+  changed_when: false
+  
+- name: Afficher l'utilisation de la swap
+  debug:
+    msg: "Utilisation swap: {{ swap_usage.stdout }}%"
+    
+- name: Nettoyer la swap si utilisation élevée
+  shell: |
+    sync
+    echo 3 > /proc/sys/vm/drop_caches
+    swapoff -a && swapon -a
+  when: 
+    - swap_usage.stdout | float > 80
+    - force_swap_clear | default(false) | bool
+  ignore_errors: true
+

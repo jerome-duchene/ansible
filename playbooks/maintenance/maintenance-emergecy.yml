@@ -1,0 +1,41 @@
+---
+# playbooks/maintenance-emergency.yml
+# Maintenance d'urgence
+- name: Maintenance d'urgence
+  hosts: all
+  become: yes
+  gather_facts: yes
+  serial: 1  # Un serveur à la fois
+  
+  vars:
+    emergency_mode: true
+    force_cleanup: true
+    
+  tasks:
+    - name: Afficher l'état d'urgence
+      debug:
+        msg: "⚠️ MAINTENANCE D'URGENCE sur {{ inventory_hostname }}"
+        
+    - name: Libérer de l'espace disque en urgence
+      shell: |
+        # Nettoyer les logs immédiatement
+        find /var/log -type f -name "*.log" -size +50M -exec truncate -s 0 {} \;
+        # Nettoyer apt cache
+        apt-get clean
+        # Nettoyer les vieux kernels
+        apt-get autoremove --purge -y
+      when: emergency_mode | bool
+      
+    - name: Redémarrer les services critiques
+      systemd:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - ssh
+        - networking
+        - systemd-resolved
+      ignore_errors: yes
+      
+    - import_tasks: ./tasks/swap-management.yml
+      vars:
+        force_swap_clear: true
